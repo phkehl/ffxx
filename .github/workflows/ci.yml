@@ -1,0 +1,78 @@
+name: ci
+
+on:
+    push:
+        branches: [test]
+    pull_request:
+        branches: [test]
+    workflow_dispatch:
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        container:
+            image: ghcr.io/fixposition/fixposition-sdk:trixie-ci
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install system deps
+              run: |
+                apt-get -y update
+                apt-get -y --with-new-pkgs upgrade
+                apt-get -y --no-install-recommends install \
+                    libcurl4-gnutls-dev libglfw3-dev libfreetype-dev zlib1g-dev libglm-dev libeigen3-dev libgl-dev \
+                    libglu1-mesa-dev libboost-all-dev libyaml-cpp-dev linux-libc-dev libssl-dev libproj-dev \
+                    proj-bin proj-data git gcc g++ cmake make xxd nlohmann-json3-dev libxrandr-dev libwayland-dev \
+                    libdata-float-perl
+            - name: Install source deps
+              run: |
+                  git config --global --add safe.directory ${GITHUB_WORKSPACE}
+                  git clone --branch main --depth 1 https://github.com/fixposition/fixposition-sdk.git 3rdparty/fixposition-sdk
+                  git clone --branch main --depth 1 https://github.com/phkehl/ubloxcfg.git             3rdparty/ubloxcfg
+            - name: Build
+              run: |
+                  make build BUILD_TYPE=Release BUILD_TESTING=ON BUILD_FFGUI=ON
+            # - name: Test
+            #   run: |
+            #       make test BUILD_TYPE=Release BUILD_TESTING=ON BUILD_FFGUI=ON
+            - name: Install
+              run: |
+                  make install BUILD_TYPE=Release BUILD_TESTING=ON BUILD_FFGUI=ON
+                  find install -ls
+    debug:
+        runs-on: ubuntu-latest
+        container:
+            image: ghcr.io/fixposition/fixposition-sdk:trixie-ci
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install system deps
+              run: |
+                apt-get -y update
+                apt-get -y --with-new-pkgs upgrade
+                apt-get -y --no-install-recommends install \
+                    libcurl4-gnutls-dev libglfw3-dev libfreetype-dev zlib1g-dev libglm-dev libeigen3-dev libgl-dev \
+                    libglu1-mesa-dev libboost-all-dev libyaml-cpp-dev linux-libc-dev libssl-dev libproj-dev \
+                    proj-bin proj-data git gcc g++ cmake make xxd nlohmann-json3-dev libxrandr-dev libwayland-dev \
+                    libdata-float-perl
+            - name: Install source deps
+              run: |
+                  git config --global --add safe.directory ${GITHUB_WORKSPACE}
+                  git clone --branch main --depth 1 https://github.com/fixposition/fixposition-sdk.git 3rdparty/fixposition-sdk
+                  git clone --branch main --depth 1 https://github.com/phkehl/ubloxcfg.git             3rdparty/ubloxcfg
+            - name: Build
+              run: |
+                  make build BUILD_TYPE=Debug BUILD_TESTING=ON BUILD_FFGUI=ON
+            # - name: Test
+            #   run: |
+            #       make test BUILD_TYPE=Debug BUILD_TESTING=ON BUILD_FFGUI=ON
+            - name: Install
+              run: |
+                  make install BUILD_TYPE=Debug BUILD_TESTING=ON BUILD_FFGUI=ON
+                  find install -ls

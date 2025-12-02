@@ -1,0 +1,125 @@
+/**
+ * \verbatim
+ * flipflip's c++ apps (ffapps)
+ *
+ * Copyright (c) Philippe Kehl (flipflip at oinkzwurgl dot org)
+ * https://oinkzwurgl.org/projaeggd/ffxx/
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
+ * \endverbatim
+ *
+ * @file
+ * @brief stream multiplexer
+ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 62.5%; }
+body { font-family: sans-serif; font-size: 1.6rem; padding: 0.5rem; overflow-y: scroll; }
+code, pre, textarea, tt, tt a { font-family: monospace; }
+
+:root {
+    --sm-highlight-bg-colour: hsl(55, 75%, 85%);
+    --sm-highlight-fg-colour: hsl(55, 65%, 40%);
+    --sm-dim-colour: hsl(0, 0%, 85%);
+    --sm-blocker-colour: hsla(0, 50%, 50%, 35%);
+    --sm-action-on-colour: hsl(120, 60%, 40%);
+    --sm-action-off-colour: hsl(0, 75%, 50%);
+    --sm-action-dis-colour: hsl(0, 0%, 75%);
+    --sm-action-flash-colour: hsl(120, 90%, 50%);
+    --sm-str-border-colour: hsl(220, 50%, 50%);
+    --sm-mux-border-colour: hsl(280, 50%, 50%);
+    --sm-str-header-colour: hsl(220, 50%, 90%);
+    --sm-mux-header-colour: hsl(280, 50%, 90%);
+}
+
+.sm-container { padding: 0.5rem; }
+
+.sm-header { margin-bottom: 1rem; }
+.sm-header.sm-row { justify-content: space-between; }
+
+
+.sm-footer { margin-top: 1em; border-top: 0.1em solid; }
+.sm-footer a { color: var(--sm-dim-colour); text-decoration: none; }
+.sm-footer a:hover { background-color: var(--sm-highlight-bg-colour); text-decoration: underline; }
+.sm-footer-logo { width: 15rem; margin: 0 auto; }
+
+.sm-ws-status { display: inline-block; border-radius: 0.25rem; }
+
+.sm-templates { display: none; }
+
+/* debug/dev */
+/*.sm-str-status-container, .sm-mux-status-container { outline: 1px dotted blue; }*/
+/*.sm-str-status, .sm-mux-status, .sm-proc-status { outline: 1px dotted red; }*/
+/*.sm-col-1, .sm-col-2, .sm-col-3, .sm-col-4, .sm-col-5, .sm-col-6, .sm-col-7, .sm-col-8, .sm-col-9, .sm-col-10, .sm-col-11, .sm-col-12 { outline: 1px dotted red; }*/
+
+.sm-str-status-container, .sm-mux-status-container { display: flex; flex-flow: row wrap; align-items: flex-start; justify-content: flex-start; gap: 1rem; }
+.sm-str-status-container { margin-bottom: 1rem; }
+.sm-status { flex: 0 0 auto; width: 40rem; border: 0.15rem solid; border-radius: 0.5rem; position: relative; }
+
+.sm-status-str { border-color: var(--sm-str-border-colour);  }
+.sm-status-mux { border-color: var(--sm-mux-border-colour);  }
+
+.sm-status-str .sm-status-head { background-color: var(--sm-str-header-colour); border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
+.sm-status-mux .sm-status-head { background-color: var(--sm-mux-header-colour); border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; }
+
+.sm-blocker { position: absolute; top: 0; left: 0; bottom: 0; right: 0; background-color: var(--sm-blocker-colour); display: none; align-items: center; justify-content: center; }
+.sm-blocker-show { display: flex; }
+.sm-blocker-ani { font-size: 5rem; font-weight: bold; width: 5rem; height: 5rem; line-height: 5rem; text-align: center; animation: sm-blocker-ani 2s linear infinite; user-select: none; cursor: not-allowed; }
+@keyframes sm-blocker-ani { 100% { transform: rotate(360deg); } }
+
+.sm-status .sm-row:hover { background-color: var(--sm-highlight-bg-colour); }
+.sm-status:hover, .sm-status-linked { border-color: var(--sm-highlight-fg-colour); outline: 0.2rem solid var(--sm-highlight-fg-colour); }
+
+.sm-action { cursor: pointer; user-select: none; line-height: 1rem; display: inline-block; width: 1.5rem; height: 1.5rem; overflow: hidden; }
+.sm-action-icon-hide { display: none; }
+
+.sm-action-icon.sm-action-on { color: var(--sm-action-on-colour); }
+.sm-action-icon.sm-action-off { color: var(--sm-action-off-colour); }
+.sm-action-icon.sm-action-dis { color: var(--sm-action-dis-colour); cursor: not-allowed; }
+
+.sm-io-blink { animation: 1s step-end infinite paused sm-io-blink; }
+@keyframes sm-io-blink { 0% { color: var(--sm-action-on-colour); } 80% { color: var(--sm-action-flash-colour);  } 100% { color: var(--sm-action-flash-colour);  } }
+
+.sm-data-statestrs2-hover:hover .sm-data-statestrs2 { display: block; z-index: 1000; }
+.sm-data-statestrs2 { display: none; position: absolute; background-color: var(--sm-highlight-bg-colour); padding-right: 0.25rem; }
+
+.sm-row { display: flex; flex-flow: row nowrap; justify-content: flex-start; }
+.sm-col-1, .sm-col-2, .sm-col-3, .sm-col-4, .sm-col-5, .sm-col-6, .sm-col-7, .sm-col-8, .sm-col-9, .sm-col-10, .sm-col-11, .sm-col-12 {
+    flex: 0 0 auto; padding: 0 0.4rem;  }
+.sm-col-1  { width:   8.3333333%; }
+.sm-col-2  { width:  16.6666666%; }
+.sm-col-3  { width:  25.0000000%; }
+.sm-col-4  { width:  33.3333333%; }
+.sm-col-5  { width:  41.6666666%; }
+.sm-col-6  { width:  50.0000000%; }
+.sm-col-7  { width:  58.3333333%; }
+.sm-col-8  { width:  66.6666666%; }
+.sm-col-9  { width:  75.0000000%; }
+.sm-col-10 { width:  83.3333333%; }
+.sm-col-11 { width:  91.6666666%; }
+.sm-col-12 { width: 100.0000000%; }
+
+.sm-pad { padding: 0.1rem 0.25rem; }
+.sm-padleft { padding-left: 0.5rem; }
+.sm-dim { color: var(--sm-dim-colour) }
+.sm-highlight-bg, .sm-highlight-bg-hover:hover { background-color: var(--sm-highlight-bg-colour) }
+.sm-highlight-fg, .sm-highlight-fg-hover:hover { color: var(--sm-highlight-fg-colour) }
+.sm-bold { font-weight: bold; }
+.sm-label { font-style: italic; }
+.sm-nowrap { text-wrap: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-nowrap.sm-dowrap, .sm-dowrap { text-wrap: unset; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.sm-right { text-align: right; }
+.sm-center { text-align: center; }
+
+.sm-details { display: none; }
+.sm-row.sm-details-show { display: flex; }

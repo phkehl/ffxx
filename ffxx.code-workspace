@@ -1,0 +1,426 @@
+{
+    "folders": [
+        { "path": ".",                        "name": "ff"              }, // Note the use of ":ff" for variable scoping below!
+        { "path": "ffxx",                     "name": "ffxx" },
+        { "path": "ffapps",                   "name": "ffapps" },
+        { "path": "ffgui",                    "name": "ffgui" },
+        { "path": "3rdparty/fixposition-sdk", "name": "fixposition-sdk" },
+        { "path": "3rdparty/ubloxcfg",        "name": "ubloxcfg"        }
+    ],
+
+    "settings": {
+        "editor.detectIndentation":     false,
+        "editor.tabSize":               4,      // Note: only active if editor.-
+        "editor.insertSpaces":          true,   //       detectIndentation is false!
+        //"editor.trimAutoWhitespace":    true,
+        "files.trimTrailingWhitespace": true,
+
+        // Leave big brother in the dark, mainly settings from @tag:usesOnlineServices
+        "telemetry.enableTelemetry": false,
+        "gitlens.telemetry.enabled": false,
+        "redhat.telemetry.enabled": false,
+        "telemetry.enableCrashReporter": false,
+        "telemetry.telemetrylevel": "off",
+        "workbench.enableExperiments": false,
+        "workbench.settings.enableNaturalLanguageSearch": false,
+        "npm.fetchOnlinePackageInfo": false,
+
+        // Exclude files and folders from explorer (it automatically excludes .git)
+        "files.exclude": {
+            ".ackrc": true,
+            ".gitattributes": true,
+            ".vscode-cache": true,
+            ".vstags": true,
+            "**/.devcontainer/**": true,
+            "**/*~": true,
+            "**/fixposition-sdk/build/**": true,
+            "**/fixposition-sdk/install/**": true,
+            "core": true
+        },
+        // Exclude things from search (this automatically uses files.exclude + what you add here)
+        "search.exclude": {
+            "output": true,
+            "tmp": true,
+            "build": true,
+            "install": true
+        },
+        // Exclude some things from the files watcher
+        "files.watcherExclude": {
+            "**/.git/objects/**": true,
+            "**/.git/refs/**": true,
+            "**/.git/logs/**": true,
+            "**/.git/subtree-cache/**": true,
+            "**/.git/worktrees/**": true,
+            "**/.vscode-cache": true,
+            "**/output/**": true,
+            "**/build/**": true,
+            "**/install/**": true
+        },
+
+        // Microsoft C++ extension (ms-vscode.cpptools)
+        "C_Cpp.intelliSenseCachePath": "${workspaceFolder:ff}/.vscode-cache",
+        // defaults for .vscode/c_cpp_properties.json (which makes that file optional)
+        // see .vscode/c_cpp_properties.json-example for details
+        // https://code.visualstudio.com/docs/cpp/customize-default-settings-cpp,
+        // https://code.visualstudio.com/docs/cpp/c-cpp-properties-schema-reference)
+        "C_Cpp.default.includePath":           [ "${workspaceFolder:ff}/**" ], // do no add more here, it confuses IntelliSense
+        // no defines required, it should use gen/make_defines.h and std_build.h
+        "C_Cpp.default.defines":               [  ],
+        //"C_Cpp.default.forcedIncludes":      [ ],
+        "C_Cpp.default.intelliSenseMode":        "gcc-x64",
+        "C_Cpp.default.compilerPath":            "/usr/bin/gcc",
+        "C_Cpp.default.cStandard":               "gnu99",
+        "C_Cpp.default.cppStandard":             "gnu++17",
+        "C_Cpp.default.browse.path":           [ "${workspaceFolder:ff}/**" ],
+        //"C_Cpp.default.configurationProvider": "b2.catkin_tools",
+        "C_Cpp.default.browse.databaseFilename": "${workspaceFolder:ff}/.vscode-cache/browse.db",
+        "C_Cpp.default.browse.limitSymbolsToIncludedHeaders": false,
+        //"C_Cpp.clang_format_style": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 120 }",
+        "editor.formatOnSave": false,
+
+        // Help VSCode to recognise some unusually named files correctly
+        "files.associations": {
+            "*.tcc": "cpp",
+            "fstream": "cpp",
+            "array": "cpp",
+            "atomic": "cpp",
+            "strstream": "cpp",
+            "bit": "cpp",
+            "bitset": "cpp",
+            "cctype": "cpp",
+            "chrono": "cpp",
+            "clocale": "cpp",
+            "cmath": "cpp",
+            "complex": "cpp",
+            "condition_variable": "cpp",
+            "csignal": "cpp",
+            "cstdarg": "cpp",
+            "cstddef": "cpp",
+            "cstdint": "cpp",
+            "cstdio": "cpp",
+            "cstdlib": "cpp",
+            "cstring": "cpp",
+            "ctime": "cpp",
+            "cwchar": "cpp",
+            "cwctype": "cpp",
+            "deque": "cpp",
+            "list": "cpp",
+            "map": "cpp",
+            "set": "cpp",
+            "unordered_map": "cpp",
+            "vector": "cpp",
+            "exception": "cpp",
+            "functional": "cpp",
+            "initializer_list": "cpp",
+            "iomanip": "cpp",
+            "iosfwd": "cpp",
+            "iostream": "cpp",
+            "istream": "cpp",
+            "limits": "cpp",
+            "memory": "cpp",
+            "mutex": "cpp",
+            "new": "cpp",
+            "numeric": "cpp",
+            "optional": "cpp",
+            "ostream": "cpp",
+            "ratio": "cpp",
+            "sstream": "cpp",
+            "stdexcept": "cpp",
+            "streambuf": "cpp",
+            "string": "cpp",
+            "string_view": "cpp",
+            "system_error": "cpp",
+            "thread": "cpp",
+            "type_traits": "cpp",
+            "tuple": "cpp",
+            "typeindex": "cpp",
+            "typeinfo": "cpp",
+            "utility": "cpp",
+            "variant": "cpp",
+            "any": "cpp",
+            "cinttypes": "cpp",
+            "codecvt": "cpp",
+            "compare": "cpp",
+            "concepts": "cpp",
+            "forward_list": "cpp",
+            "algorithm": "cpp",
+            "iterator": "cpp",
+            "memory_resource": "cpp",
+            "random": "cpp",
+            "regex": "cpp",
+            "numbers": "cpp",
+            "ranges": "cpp",
+            "semaphore": "cpp",
+            "stop_token": "cpp",
+            "cfenv": "cpp",
+            "valarray": "cpp",
+            "shared_mutex": "cpp",
+            "termios.h": "c",
+            "*.conf": "bitbake",
+            "*.inc": "bitbake",
+            "*.ipp": "c",
+            "filesystem": "cpp",
+            "csetjmp": "cpp",
+            "barrier": "cpp",
+            "charconv": "cpp",
+            "coroutine": "cpp",
+            "cuchar": "cpp",
+            "unordered_set": "cpp",
+            "netfwd": "cpp",
+            "source_location": "cpp",
+            "rope": "cpp",
+            "slist": "cpp",
+            "future": "cpp",
+            "latch": "cpp",
+            "scoped_allocator": "cpp",
+            "span": "cpp",
+            "syncstream": "cpp",
+            "expected": "cpp",
+            "format": "cpp",
+            "generator": "cpp",
+            "print": "cpp",
+            "spanstream": "cpp",
+            "stacktrace": "cpp",
+            "stdfloat": "cpp",
+            "text_encoding": "cpp",
+            "core": "cpp",
+            "specialfunctions": "cpp",
+            "splines": "cpp",
+            "*.cpp-defunct": "cpp"
+        },
+
+        // Automatically detected tasks (e.g. for .c files) won't work for us
+        "task.autoDetect": "off",
+        "typescript.tsc.autoDetect": "off",
+        "grunt.autoDetect": "off",
+        "gulp.autoDetect": "off",
+        "jake.autoDetect": "off",
+        "npm.autoDetect": "off",
+        "cSpell.words": [
+            "Blabla",
+            "Kehl",
+            "NOGDI",
+            "NUMOF",
+            "Nmea",
+            "Rtcm",
+            "UBLOXCFG",
+            "blox",
+            "oinkzwurgl",
+            "stringification"
+        ],
+        "cmake.configureOnOpen": false,
+        "python.autoComplete.extraPaths": [
+            "${workspaceFolder:ff}/sources/poky/bitbake/lib",
+            "${workspaceFolder:ff}/sources/poky/meta/lib",
+            "${workspaceFolder:ff}/poky/bitbake/lib",
+            "${workspaceFolder:ff}/poky/meta/lib",
+            "${workspaceFolder}/poky/bitbake/lib",
+            "${workspaceFolder}/poky/meta/lib"
+        ],
+        "python.analysis.extraPaths": [
+            "/home/flip/core/sw/gnss/misc/scripts",
+            "${workspaceFolder:ff}/scripts",
+            "/opt/ros/noetic/lib/python3/dist-packages",
+            "${workspaceFolder:ff}/sources/poky/bitbake/lib",
+            "${workspaceFolder:ff}/sources/poky/meta/lib",
+            "${workspaceFolder:ff}/poky/bitbake/lib",
+            "${workspaceFolder:ff}/poky/meta/lib",
+            "${workspaceFolder}/poky/bitbake/lib",
+            "${workspaceFolder}/poky/meta/lib"
+        ],
+        "[python]": {
+            "diffEditor.ignoreTrimWhitespace": false,
+            "gitlens.codeLens.symbolScopes": [
+                "!Module"
+            ],
+            "editor.formatOnType": true,
+            "editor.wordBasedSuggestions": "off",
+            "files.trimTrailingWhitespace": false
+        },
+        "[shellscript]": {
+            "files.eol": "\n",
+            "files.trimTrailingWhitespace": false
+        },
+        "C_Cpp.default.compileCommands": [
+            "${workspaceFolder:ff}/build/Debug/compile_commands.json"
+        ],
+        "workbench.colorCustomizations": {
+            "commandCenter.border": "#e7e7e799",
+            "titleBar.activeBackground": "#832561",
+            "titleBar.activeForeground": "#e7e7e7",
+            "titleBar.inactiveBackground": "#83256199",
+            "titleBar.inactiveForeground": "#e7e7e799"
+        },
+        "peacock.color": "#832561"
+    },
+
+    // Essential recommended and not recommended extensions. See the wiki for more.
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.cpptools",
+            "mhutchie.git-graph",
+            "maattdd.gitless"
+        ],
+        "unwantedRecommendations": [
+            "austin.code-gnu-global", // conflicts with "ms-vscode.cpptools" (?)
+        ]
+    },
+
+    // Build and test tasks. Users can add more tasks in .vscode/tasks.json.
+    "tasks": {
+        // https://code.visualstudio.com/docs/editor/tasks
+        // https://code.visualstudio.com/docs/editor/tasks-appendix
+        "version": "2.0.0",
+
+        // Defaults for all tasks
+        "options": {
+            "cwd": "${workspaceFolder:ff}",
+            "shell": { "executable": "/bin/bash", "args": [ "-c" ] },
+            "setupCommands": [
+                { "text": "-enable-pretty-printing", "description": "enable pretty printing", "ignoreFailures": true },
+                { "text": "handle SIGPIPE nostop noprint pass", "description": "ignore SIGPIPE", "ignoreFailures": true }
+            ]
+        },
+        "problemMatcher": "$gcc",
+        "type": "shell",
+
+        // Tasks definitions
+        "tasks": [
+            // -----------------------------------------------------------------------------------------
+            {
+                "label": "make all",
+                "group":{ "kind": "build", "isDefault": true },
+                "dependsOn": [ "make clean", "make build" ],
+                "dependsOrder": "sequence"
+            },
+            {
+                "label": "make build",
+                "group": "build", "type": "shell",
+                "command": "make", "args": [ "build" ]
+            },
+            {
+                "label": "make clean",
+                "group": "build",
+                "command": "make", "args": [ "clean" ]
+            },
+            // -----------------------------------------------------------------------------------------
+            {
+                "label": "test",
+                "group":{ "kind": "test","isDefault": true },
+                "dependsOn": [ "make clean", "make build" ],
+                "dependsOrder": "sequence"
+            },
+            {
+                "label": "test",
+                "group": "test",
+                "command": "build/Debug/ubloxcfg/ubloxcfg-test", "args": [ "-v" ],
+                "dependsOn": "make build"
+            },
+            // see more useful things in .vscode/tasks.json-example
+            // -----------------------------------------------------------------------------------------
+            {
+                "label": "debug workspaceFolder path",
+                "group": "build",
+                "command": "echo ${workspaceFolder:ff} && readlink -f ${workspaceFolder:ff}"
+            }
+        ],
+
+        // Input variables
+        "inputs": [
+            // https://code.visualstudio.com/docs/editor/variables-reference#_input-variables
+        ]
+    },
+    // Launch (debugging)
+    "launch": {
+        // https://code.visualstudio.com/docs/cpp/launch-json-reference
+        "configurations": [
+            // {
+            //     "name": "debug test_m32",
+            //     "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+            //     "stopAtEntry": false,
+            //     "preLaunchTask" : "make test_m32-debug",
+            //     "program": "${workspaceFolder:ff}/output/test_m32-debug",
+            //     "args": [ ],
+            //     "cwd": "${workspaceFolder:ff}"
+            // },
+            // {
+            //     "name": "debug test_m64",
+            //     "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+            //     "stopAtEntry": true,
+            //     "preLaunchTask" : "make test_m64-debug",
+            //     "program": "${workspaceFolder:ff}/output/test_m64-debug",
+            //     "args": [ ],
+            //     "cwd": "${workspaceFolder:ff}"
+            // },
+            // {
+            //     "name": "debug cfgtool cfg2ubx",
+            //     "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+            //     "stopAtEntry": false,
+            //     "preLaunchTask" : "make cfgtool-debug",
+            //     "program": "${workspaceFolder:ff}/output/cfgtool-debug",
+            //     "args": [ "-v", "-i", "test_cfg2ubx.txt", "cfg2ubx", "-l", "ram" ],
+            //     "cwd": "${workspaceFolder:ff}"
+            // },
+            // {
+            //     "name": "debug cfgtool dump",
+            //     "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+            //     "stopAtEntry": false,
+            //     "preLaunchTask" : "make cfgtool-debug",
+            //     "program": "${workspaceFolder:ff}/output/cfgtool-debug",
+            //     "args": [ "-v", "-p", "tcp://fry:20001", "dump" ],
+            //     "cwd": "${workspaceFolder:ff}"
+            // },
+            // {
+            //     "name": "debug cfgtool parse",
+            //     "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+            //     "stopAtEntry": false,
+            //     "preLaunchTask" : "make cfgtool-debug",
+            //     "program": "${workspaceFolder:ff}/output/cfgtool-debug",
+            //     "args": [ "-v", "-i", "tmp/fplog1", "parse", "-x", "-e" ],
+            //     "cwd": "${workspaceFolder:ff}"
+            // },
+            {
+                "name": "debug ffgui",
+                "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+                "stopAtEntry": false,
+                "preLaunchTask": "make build",
+                "program": "${workspaceFolder:ff}/build/Debug/ffgui/ffgui",
+                "args": [ "-v" ],
+                //"coreDumpPath": "${workspaceFolder:ff}/build/Debug",
+                "cwd": "${workspaceFolder:ff}",
+                //"miDebuggerArgs": "-ex source .gdbinit", // nope... :-/
+                "setupCommands": [
+                    { "text": "-enable-pretty-printing", "description": "enable pretty printing", "ignoreFailures": true }, // needs setup code in ~/.gdbinit!
+                    { "text": "handle SIGPIPE nostop noprint pass", "description": "ignore SIGPIPE", "ignoreFailures": true },
+                    { "text": "source ${workspaceFolder:ff}/.gdbinit", "description": "load local .gdbinit", "ignoreFailures": false }
+                    // ubloxcfg/.gdbinit for more...
+                    { "text": "add-natvis ${workspaceFolder:ff}/3rdparty/imgui/imgui.natvis", "description": "imgui natvis", "ignoreFailures": true }
+                    // // "-exec info skip" to show in debug console
+                    // { "text": "skip -rfunction Im(Vec2|Vec4|Strv|Vector|Span)::.+", "description": "skip trivial ImGui functions", "ignoreFailures": true },
+                    // { "text": "skip -rfunction Vec2::.+", "description": "skip trivial Ff functions", "ignoreFailures": true },
+                    // // https://sourceware.org/gdb/onlinedocs/gdb/Skipping-Over-Functions-and-Files.html
+                    // // FIXME: doesn't work :-( or does it?
+                    // { "text": "skip -rfunction ^std(::__cxx11|)::(allocator|basic_string)<.*>::", "description": "skip string ctor/dtor", "ignoreFailures": true },
+                    // { "text": "skip -rfunction ^std(::__cxx11|)::([a-zA-z0-9_]+)<.*>::", "description": "skip std ctor/dtor", "ignoreFailures": true },
+                ]
+            },
+            {
+                "name": "debug parsertool",
+                "type": "cppdbg", "request": "launch", "MIMode": "gdb", "miDebuggerPath" : "gdb",
+                "stopAtEntry": false,
+                "preLaunchTask": "make build",
+                "program": "${workspaceFolder:ff}/build/Debug/fpsdk_apps/parsertool",
+                "args": [ "-v", "tmp/log_0000.sbf" ],
+                "cwd": "${workspaceFolder:ff}",
+                "setupCommands": [
+                    { "text": "-enable-pretty-printing", "description": "enable pretty printing", "ignoreFailures": true }, // needs setup code in ~/.gdbinit!
+                    { "text": "handle SIGPIPE nostop noprint pass", "description": "ignore SIGPIPE", "ignoreFailures": true },
+                    { "text": "source ${workspaceFolder:ff}/.gdbinit", "description": "load local .gdbinit", "ignoreFailures": false }
+                    { "text": "add-natvis ${workspaceFolder:ff}/3rdparty/imgui/imgui.natvis", "description": "imgui natvis", "ignoreFailures": true }
+                ]
+            }
+            // see more useful things in .vscode/launch.json-example
+        ],
+        "compounds": []
+    }
+}
