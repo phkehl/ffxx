@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<!--
+/**
+ * \verbatim
+ * flipflip's c++ apps (ffapps)
+ *
+ * Copyright (c) Philippe Kehl (flipflip at oinkzwurgl dot org)
+ * https://oinkzwurgl.org/projaeggd/ffxx/
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program.
+ * If not, see <https://www.gnu.org/licenses/>.
+ * \endverbatim
+ *
+ * @file
+ * @brief stream multiplexer
+ */
+-->
+<html lang="en-GB">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Streammux</title>
+    <link rel="stylesheet" type="text/css" href="streammux.css" />
+    <script type="text/javascript" src="streammux.js"></script>
+    <!-- <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> -->
+    <!-- https://www.favicon.cc/?action=icon&file_id=1015469 License: Creative Commons, no attribution -->
+    <link
+        href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAP8AAAD/AAAAiwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPIAAAD/AAAA/wAAANMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALcAAAD/AAAA/wAAAP8AAADXAAAAAAAAAIEAAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcQAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAAAAAACdAAAA/wAAAP8AAAD/AAAAAAAAAAAAAAAAAAAAAAAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAAAAAAAAAAAAOwAAAD/AAAA+QAAAAAAAAAAAAAAAAAAAAAAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAB3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACcAAAA/wAAAP8AAABuAAAAAAAAAAAAAAD6AAAA1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArAAAA/wAAAP8AAAD+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAACsAAAA/wAAACUAAAAAAAAAAAAAAHsAAAAAAAAAAAAAAP8AAAD/AAAA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/wAAAP8AAAD4AAAAAAAAAJUAAAD/AAAA/wAAAAAAAAAAAAAAJgAAAEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAD/AAAAxgAAAAAAAABnAAAA/wAAAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/wAAADAAAAAAAAAAAAAAAP8AAAD/AAAAFQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//8AAP//AAD8fwAA+H8AAPBHAADgQwAAwGMAAMD/AADxzwAA/8cAAM/HAADEfwAAxn8AAO5/AAD//wAA//8AAA=="
+        rel="icon" type="image/x-icon">
+</head>
+
+<body>
+    <div class="sm-container" id="streammux">
+        <div class="sm-header">
+                <div class="sm-status sm-status-proc">
+                <div class="sm-row sm-status-head">
+                    <div class="sm-col-3 sm-label sm-bold">
+                        flipflip's StreamMux
+                    </div>
+                    <div class="sm-col-6 sm-center sm-bold sm-nowrap sm-data sm-data-name"></div>
+                    <div class="sm-col-3 sm-right">
+                        <div class="sm-ws-status sm-pad">Unknown</div>
+                        <div class="sm-center sm-action sm-action-allrelative sm-highlight-fg-hover" title="Toggle relative stats">
+                            <span class="sm-action-icon sm-bold">∑</span>
+                            <span class="sm-action-icon sm-bold">𝛥</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-alldetails sm-highlight-fg-hover" title="Toggle details">
+                            <span class="sm-action-icon">🞊</span>
+                            <span class="sm-action-icon">🞋</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-1 sm-nowrap" title="Process ID on host system">
+                        <span class="sm-label">PID:</span> <span class="sm-data sm-data-pid"></span>
+                    </div>
+                    <div class="sm-col-2 sm-nowrap" title="Process uptime [d hh:mm:ss]">
+                        <span class="sm-label">Uptime:</span> <span class="sm-data sm-data-uptime_str"></span>
+                    </div>
+                    <div class="sm-col-3 sm-nowrap" title="Host current date and time">
+                        <span class="sm-label">Date and time:</span> <span class="sm-data sm-data-time_str"></span>
+                    </div>
+                    <div class="sm-col-3 sm-nowrap" title="Current CPU usage (5 minutes mean, min and max) [%]">
+                        <span class="sm-label">CPU:</span> <span class="sm-data sm-data-cpu_curr"></span>
+                            (<span class="sm-data sm-data-cpu_mean"></span>, <span class="sm-data sm-data-cpu_min"></span>, <span class="sm-data sm-data-cpu_max"></span>)
+                    </div>
+                    <div class="sm-col-3 sm-nowrap" title="Current memory usage (5 minutes mean, min and max) [MiB]">
+                        <span class="sm-label">Memory:</span> <span class="sm-data sm-data-mem_curr"></span>
+                            (<span class="sm-data sm-data-mem_mean"></span>, <span class="sm-data sm-data-mem_min"></span>, <span class="sm-data sm-data-mem_max"></span>)
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="sm-templates">
+            <div class="sm-stats">
+                <div class="sm-row sm-always">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">Messages:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_msgs"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_msgs"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row sm-always">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">Bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_msgs"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_msgs"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">Errors:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_err"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_err"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">Filter count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_filt"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_filt"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">Filter size:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_filt"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_filt"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">FP_A count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_fpa"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_fpa"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">FP_A bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_fpa"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_fpa"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">FP_B count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_fpb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_fpb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">FP_B bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_fpb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_fpb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">NMEA count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_nmea"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_nmea"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">NMEA bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_nmea"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_nmea"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">UBX count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_ubx"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_ubx"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">UBX bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_ubx"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_ubx"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">RTCM3 count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_rtcm3"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_rtcm3"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">RTCM3 bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_rtcm3"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_rtcm3"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">UNI_B count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_unib"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_unib"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">UNI_B bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_unib"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_unib"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">NOV_B count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_novb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_novb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">NOV_B bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_novb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_novb"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">SBF count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_sbf"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_sbf"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">SBF bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_sbf"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_sbf"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">QGC count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_qgc"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_qgc"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">QGC bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_qgc"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_qgc"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">SPARTN count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_spartn"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_spartn"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">SPARTN bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_spartn"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_spartn"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">OTHER count:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-n_other"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-n_other"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-right">OTHER bytes:</div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_a-s_other"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                    <div class="sm-col-4 sm-nowrap sm-right sm-data sm-data-stats_b-s_other"><div class="sm-data-val-abs"></div><div class="sm-data-val-rel"></div></div>
+                </div>
+            </div>
+            <div class="sm-status sm-status-str">
+                <div class="sm-blocker"><div class="sm-blocker-ani">☼</div></div>
+                <div class="sm-row sm-status-head">
+                    <div class="sm-col-3 sm-nowrap sm-label sm-bold">Stream:</div>
+                    <div class="sm-col-5 sm-nowrap sm-data sm-data-name sm-bold"></div>
+                    <div class="sm-col-4 sm-right">
+                        <div class="sm-center sm-action sm-action-ena0 sm-highlight-fg-hover" title="Toggle read on/off">
+                            <span class="sm-action-icon sm-action-dis">▶</span>
+                            <span class="sm-action-icon sm-action-on sm-io-blink">▶</span>
+                            <span class="sm-action-icon sm-action-off">▶</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-ena1 sm-highlight-fg-hover" title="Toggle write on/off">
+                            <span class="sm-action-icon sm-action-dis">◀</span>
+                            <span class="sm-action-icon sm-action-on sm-io-blink">◀</span>
+                            <span class="sm-action-icon sm-action-off">◀</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-relative sm-highlight-fg-hover" title="Toggle relative stats">
+                            <span class="sm-action-icon sm-bold">∑</span>
+                            <span class="sm-action-icon sm-bold">𝛥</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-details sm-highlight-fg-hover" title="Toggle details">
+                            <span class="sm-action-icon">🞊</span>
+                            <span class="sm-action-icon">🞋</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Path:</div>
+                    <div class="sm-col-9 sm-breakall sm-data sm-data-disp sm-tooltip"></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Info:</div>
+                    <div class="sm-col-9 sm-breakall sm-data sm-data-info"></div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Type/mode:</div>
+                    <div class="sm-col-9 sm-nowrap">
+                        <span class="sm-data sm-data-type"></span> /
+                        <span class="sm-data sm-data-mode"></span>
+                    </div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Opts:</div>
+                    <div class="sm-col-9 sm-nowrap">
+                        <span class="sm-data sm-data-opts"></span>
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">State:</div>
+                    <div class="sm-col-9 sm-nowrap">
+                        <span class="sm-data sm-data-state"></span> (<span class="sm-data sm-data-stateagestr"></span>)
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Error:</div>
+                    <div class="sm-col-9 sm-nowrap">
+                        <span class="sm-data sm-data-error"></span>
+                    </div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-12 sm-data-statestrs2-hover">
+                        <div class="sm-dowrap sm-padleft sm-data sm-data-statestrs2"></div>
+                        <div class="sm-dowrap sm-padleft sm-data sm-data-statestrs"></div>
+                    </div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Filter read:</div>
+                    <div class="sm-col-9 sm-data sm-data-filter_a"></div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Filter write:</div>
+                    <div class="sm-col-9 sm-data sm-data-filter_b"></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label">Stats:</div>
+                    <div class="sm-col-4 sm-right sm-label">Read:</div>
+                    <div class="sm-col-4 sm-right sm-label">Write:</div>
+                </div>
+            </div>
+            <div class="sm-status sm-status-mux">
+                <div class="sm-blocker"><div class="sm-blocker-ani">☼</div></div>
+                <div class="sm-row sm-status-head">
+                    <div class="sm-col-3 sm-nowrap sm-label sm-bold">Mux:</div>
+                    <div class="sm-col-5 sm-nowrap sm-data sm-data-name sm-bold"></div>
+                    <div class="sm-col-4 sm-right">
+                        <div class="sm-center sm-action sm-action-ena0 sm-highlight-fg-hover" title="Toggle fwd on/off">
+                            <span class="sm-action-icon sm-action-dis">▶</span>
+                            <span class="sm-action-icon sm-action-on sm-io-blink">▶</span>
+                            <span class="sm-action-icon sm-action-off">▶</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-ena1 sm-highlight-fg-hover" title="Toggle rev on/off">
+                            <span class="sm-action-icon sm-action-dis">◀</span>
+                            <span class="sm-action-icon sm-action-on sm-io-blink">◀</span>
+                            <span class="sm-action-icon sm-action-off">◀</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-relative sm-highlight-fg-hover" title="Toggle relative stats">
+                            <span class="sm-action-icon sm-bold">∑</span>
+                            <span class="sm-action-icon sm-bold">𝛥</span>
+                        </div>
+                        <div class="sm-center sm-action sm-action-details sm-highlight-fg-hover" title="Toggle details">
+                            <span class="sm-action-icon">🞊</span>
+                            <span class="sm-action-icon">🞋</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Src:</div>
+                    <div class="sm-col-9 sm-data sm-data-src"></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Dst:</div>
+                    <div class="sm-col-9 sm-data sm-data-dst"></div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Filter fwd:</div>
+                    <div class="sm-col-9 sm-data sm-data-filter_a"></div>
+                </div>
+                <div class="sm-row sm-details">
+                    <div class="sm-col-3 sm-nowrap sm-label">Filter rev::</div>
+                    <div class="sm-col-9 sm-data sm-data-filter_b"></div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-4 sm-nowrap sm-label">Stats:</div>
+                    <div class="sm-col-4 sm-right sm-label">Fwd:</div>
+                    <div class="sm-col-4 sm-right sm-label">Rev:</div>
+                </div>
+            </div>
+            <div class="sm-status sm-status-mon">
+                <div class="sm-blocker"><div class="sm-blocker-ani">☼</div></div>
+                <div class="sm-row sm-status-head">
+                    <div class="sm-col-3 sm-nowrap sm-label sm-bold">Monitor:</div>
+                    <div class="sm-col-5 sm-nowrap sm-data sm-data-name sm-bold"></div>
+                    <div class="sm-col-4 sm-right">
+                        <div class="sm-center sm-action sm-action-details sm-highlight-fg-hover" title="Toggle details">
+                            <span class="sm-action-icon">🞊</span>
+                            <span class="sm-action-icon">🞋</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sm-row">
+                    <div class="sm-col-3 sm-nowrap sm-label">Stream:</div>
+                    <div class="sm-col-9 sm-data sm-data-src"></div>
+                </div>
+                <div class="sm-row sm-d-none sm-monstats-trow">
+                    <div class="sm-col-4 sm-nowrap sm-label">Stats <span class="sm-data-winSize"></span>:</div>
+                    <div class="sm-col-2 sm-right sm-label">Mean:</div>
+                    <div class="sm-col-2 sm-right sm-label">Std:</div>
+                    <div class="sm-col-2 sm-right sm-label">Min:</div>
+                    <div class="sm-col-2 sm-right sm-label">Max:</div>
+                </div>
+                <div class="sm-row sm-d-none sm-monstats-vrow">
+                    <div class="sm-col-4 sm-nowrap sm-label sm-data-title sm-right"></div>
+                    <div class="sm-col-2 sm-nowrap sm-right sm-data sm-data-mean"></div>
+                    <div class="sm-col-2 sm-nowrap sm-right sm-data sm-data-std"></div>
+                    <div class="sm-col-2 sm-nowrap sm-right sm-data sm-data-min"></div>
+                    <div class="sm-col-2 sm-nowrap sm-right sm-data sm-data-max"></div>
+                </div>
+            </div>
+        </div>
+        <div class="sm-str-status-container"></div>
+        <div class="sm-mux-status-container"></div>
+        <div class="sm-mon-status-container"></div>
+        <div class="sm-footer">
+            <div class="sm-footer-copyright sm-center"></div>
+            <div class="sm-footer-logo">
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

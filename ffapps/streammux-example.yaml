@@ -1,0 +1,26 @@
+- name:   Example
+- api:    :20000
+- report: /tmp/streammux-example.json
+
+# EVK-F9P configured as basestation (e.g. ubloxcfg/tools/evk-f9p-base.cfg)
+# - Using USB serial port
+- stream: serial:///dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00,A=5.0,R=5.0,H=on,LR=10.0,N=rx
+# - Admin server to directly talk to the F9P receiver
+- stream tcpsvr://:20001,N=admin
+- mux rx=admin
+# - Log F9P data
+- stream fileout:///tmp/streammux-example/F9P/%Y/F9P_%Y%m%d.raw:86400::ren,N=lrx
+- mux rx=lrx
+# - Monitor F9P basestation
+- monitor: rx,E=1,W=60/300,N=mrx
+
+# If you have a NTIP caster:
+# # - Send RTCM3 messages to NTRIP caster
+# - stream ntripsvr://password@ntrip.example.com:2101/EXAMPLE,N=svr
+# - mux rx=svr,FF=RTCM3
+# # - Log NTRIP mountpoint
+# - stream ntripcli://user:pass@ntrip.example.com:2101/FF99,RO,LR=10.0,N=ntrip
+# - stream fileout:///tmp/streammux-example/FF99/%Y/FF99_%Y%m%d.raw:86400::ren,N=lntrip
+# - mux ntrip=lntrip
+# # - Monitor NTRIP basestation
+# - monitor: ntrip,E=2,W=60/300,N=mntrip
