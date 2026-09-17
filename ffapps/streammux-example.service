@@ -1,0 +1,35 @@
+# sudo cp ffapps/streammux-example.service /etc/systemd/system
+# sudo systemctl daemon-reload
+# journalctl -fu streammux-example &
+# sudo systemctl restart streammux-example
+
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html
+# https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html
+
+[Unit]
+Description=Streammux example service (%N)
+After=multi-user.target network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=all
+SyslogIdentifier=%N
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=5
+WatchdogSec=10
+MemoryHigh=100M
+MemoryMax=150M
+CPUQuota=25%
+TasksMax=200
+User=flip
+
+ExecStart=/bin/bash /usr/local/bin/streammux --systemd -c /usr/local/share/doc/ffapps/streammux-example.yaml
+
+[Install]
+WantedBy=default.target

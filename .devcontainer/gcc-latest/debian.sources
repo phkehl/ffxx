@@ -1,0 +1,23 @@
+Types: deb
+URIs: http://mirror.init7.net/debian
+Suites: trixie
+Components: main non-free contrib non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+
+Types: deb
+URIs: http://mirror.init7.net/debian-security
+Suites: trixie-security
+Components: main non-free contrib non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+
+Types: deb
+URIs: http://mirror.init7.net/debian
+Suites: trixie-backports
+Components: main non-free contrib non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+
+Types: deb
+URIs: http://mirror.init7.net/debian
+Suites: trixie-updates
+Components: main non-free contrib non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp

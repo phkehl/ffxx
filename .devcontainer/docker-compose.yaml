@@ -1,0 +1,20 @@
+
+name: ffxx
+
+services:
+    debian-trixie:
+        image: debian-trixie
+        build:
+            context: .
+            dockerfile: debian-trixie/Dockerfile
+        volumes:
+            - ../.:/home/ffxx/ffxx
+        command: tail -f
+    gcc-latest:
+        image: gcc-latest
+        build:
+            context: .
+            dockerfile: gcc-latest/Dockerfile
+        volumes:
+            - ../.:/home/ffxx/ffxx
+        command: tail -f
