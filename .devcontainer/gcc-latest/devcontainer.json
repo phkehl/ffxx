@@ -1,0 +1,17 @@
+// https://aka.ms/devcontainer.json
+{
+    "dockerComposeFile": "../docker-compose.yaml",
+    "shutdownAction": "stopCompose",
+
+    "name": "GCC Latest", "service": "gcc-latest", "runServices": [ "gcc-latest" ],
+
+    // Use this user in the container, re-map IDs to local user automatically
+    "remoteUser": "ffxx",
+    "updateRemoteUserUID": true,
+
+    // compare volumes in docker-compose.yaml
+    "workspaceFolder": "/home/ffxx/ffxx",
+
+    // Deliberately empty, see ffxx.code-workspace instead
+    "customizations": {}
+}

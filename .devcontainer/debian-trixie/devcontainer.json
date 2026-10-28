@@ -1,0 +1,17 @@
+// https://aka.ms/devcontainer.json
+{
+    "dockerComposeFile": "../docker-compose.yaml",
+    "shutdownAction": "stopCompose",
+
+    "name": "Debian Trixie", "service": "debian-trixie", "runServices": [ "debian-trixie" ],
+
+    // Use this user in the container, re-map IDs to local user automatically
+    "remoteUser": "ffxx",
+    "updateRemoteUserUID": true,
+
+    // compare volumes in docker-compose.yaml
+    "workspaceFolder": "/home/ffxx/ffxx",
+
+    // Deliberately empty, see ffxx.code-workspace instead
+    "customizations": {}
+}

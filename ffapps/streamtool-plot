@@ -1,0 +1,618 @@
+#!/usr/bin/perl
+#
+# streamtool statistics plotter
+#
+# Copyright (c) Philippe Kehl (flipflip at oinkzwurgl dot org)
+# https://oinkzwurgl.org/projaeggd/ffxx/
+#
+# This program is free software: you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with this program.
+# If not, see <https://www.gnu.org/licenses/>.
+#
+# You'll need: apt install libjson-xs-perl libmime-base64-perl gnuplot
+#
+use strict;
+use warnings;
+use utf8;
+use Path::Tiny;
+use Data::Dumper;
+use JSON::XS;
+use File::Temp;
+use MIME::Base64;
+
+########################################################################################################################
+
+my $VERBOSITY = 0;
+
+# Slup __DATA__ into different parts
+my %DATA = ();
+do {
+    my $part = 'NONE';
+    foreach my $line (<DATA>) {
+        if ($line =~ m{^\@\@([^@]+)\@\@$}) {
+            $part = $1;
+        } else {
+            $DATA{$part} .= $line;
+        }
+    }
+};
+
+sub main
+{
+    my (@argv) = @_;
+    my $input = undef;
+    my $ok = 1;
+    while (my $arg = shift(@argv))
+    {
+        if ($arg eq '-v') { $VERBOSITY++; }
+        elsif (!defined $input) { $input = $arg; }
+        else { WARNING("Bad argument '$arg'"); $ok = 0; }
+    }
+    if (!defined $input) {
+        WARNING("Missing input file");
+        $ok = 0;
+    }
+    if (!$ok) {
+        return 0;
+    }
+
+    # Report and all data
+    my $input_basename = path($input)->basename(); # "meier.json"
+    my $input_name = substr($input_basename, 0, -5);
+    my $data = jsonLoad($input);
+    my $report =
+    {
+        title       => "Stream statistics: $input_name",
+        input       => $input,
+        input_name  => $input_basename,
+        html_name   => "${input_name}.html",
+        data        => $data,  # { meta => { ... }, msgstats => [ { ... } ], parser => { ... } }
+        # We have in each [] from msgstats:
+        # {
+        #     protocol     => 'FP_A',
+        #     message      => 'FP_A-EOE',
+        #     unique_name  => 'FP_A-EOE_FUSION',
+        #     desc         => 'some description (for some messages only...)',
+        #     n_msgs => 311, p_msgs => 24.411, n_bytes => 12440, p_bytes => 11.760,
+        #     latency => {
+        #         N => 311, mean => ..., std => ..., min => ..., p500 => ..., p680 => ..., p950 => ..., p997 => ..., max => ...
+        #         hist  => {
+        #             size=> 202, start => -0.01, stop => 0.19, width => 0.001,
+        #             data => [ { lower => ..., center => ..., upper => ..., count => ..., prob => .., cumul => ...}, { ... }, ... ]
+        #         }
+        #     },
+        #     interval => { ... },
+        #     frequency => { ... },
+        #
+
+        # Histograms to analyse
+        histos => [
+            {
+                name => 'latency', title => "Latency", xlabel => 'Latency [ms]',
+                scale  => 1e3, fmtx => '%.0f', fmtd => '%5.1f', width => 750, height => 450,
+            },
+            {
+                name => 'interval', title => "Interval", xlabel => 'Interval [ms]',
+                scale  => 1e3, fmtx => '%.0f', fmtd => '%5.1f', width => 750, height => 450,
+            },
+            {
+                name => 'frequency', title => "Frequency", xlabel => 'Frequency [Hz]',
+                scale  => 1, fmtx => '%.0f', fmtd => '%5.1f', width => 750, height => 450,
+            },
+        ],
+
+        # Generated plots for the report
+        sections  => [],
+    };
+
+    # Load data
+    if (!$report->{data}) {
+        return 0;
+    }
+
+    # Temporary work directory
+    $File::Temp::KEEP_ALL = 1 if ($VERBOSITY > 0);
+    my $workdir = File::Temp::tempdir();
+
+    # Make summary
+    if (!sumMsgstats($report, $workdir)) {
+        $ok = 0;
+    }
+
+    # Make message histogram plots
+    if (!plotMsgstats($report, $workdir)) {
+        $ok = 0;
+    }
+
+    # Make report
+    if (!makeHtml($report, $workdir)) {
+        $ok = 0;
+    }
+
+    my $outbase = path($input)->dirname();
+    INFO("Writing $outbase/$report->{html_name}");
+    path("$workdir/$report->{html_name}")->copy("$outbase/$report->{html_name}");
+
+
+    return $ok;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+sub sumMsgstats
+{
+    my ($report, $workdir) = @_;
+    INFO("Summary");
+
+    my $html = "<table class=\"summary\">\n";
+
+    my $thead = "<thead>\n";
+    my $thead1 = "<tr><th rowspan=\"2\">Message</th>";
+    my $thead2 = '<tr>';
+    foreach my $hdef (@{$report->{histos}}) {
+        $thead1 .= "<th rowspan=\"2\"></th><th colspan=\"9\">$hdef->{xlabel}</th>";
+        $thead2 .= "<th>N</th><th>mean</th><th>std</th><th>min</th><th>50%</th><th>68%</th><th>95%</th><th>99.7%</th><th>max</th>";
+    }
+    $thead1 .= '</tr>';
+    $thead2 .= '</tr>';
+    $thead .= "$thead1\n$thead2\n</thead>";
+
+
+    my $tbody = "<tbody>\n";
+    foreach my $st (@{$report->{data}->{msgstats}}) {
+        my $row = "<tr><td class=\"name\"><a href=\"#$st->{unique_name}\">$st->{unique_name}</a></td>";
+        foreach my $hdef (@{$report->{histos}}) {
+            my $histname = $hdef->{name};
+            my $hi = $st->{$histname};
+            $row .= "<td></td><td class=\"num\">$hi->{N}</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{mean} ? sprintf($hdef->{fmtd}, $hi->{mean} * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{std}  ? sprintf($hdef->{fmtd}, $hi->{std}  * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{min}  ? sprintf($hdef->{fmtd}, $hi->{min}  * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{p500} ? sprintf($hdef->{fmtd}, $hi->{p500} * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{p680} ? sprintf($hdef->{fmtd}, $hi->{p680} * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{p950} ? sprintf($hdef->{fmtd}, $hi->{p950} * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{p997} ? sprintf($hdef->{fmtd}, $hi->{p997} * $hdef->{scale}) : "") . "</td>";
+            $row .= "<td class=\"stat\">" . (defined $hi->{max}  ? sprintf($hdef->{fmtd}, $hi->{max}  * $hdef->{scale}) : "") . "</td>";
+
+        }
+        $row .= "</td>\n";
+        $tbody .= $row;
+    }
+    $tbody .= "</tbody>\n";
+
+    $html .= $thead . $tbody;
+    $html .= "</table>\n";
+
+    push(@{$report->{sections}}, { title => "Summary", html => $html });
+
+    return  1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+sub plotMsgstats
+{
+    my ($report, $workdir) = @_;
+
+    foreach my $st (@{$report->{data}->{msgstats}}) {
+
+        INFO("Plotting %s", $st->{unique_name});
+
+        my $ok = 1;
+        my @plots = ();
+
+        foreach my $hdef (@{$report->{histos}}) {
+            my $histname = $hdef->{name};
+            my $hi = $st->{$histname};
+            my $gp_name = "$st->{unique_name}_${histname}.gp";
+            my $dat_name = "$st->{unique_name}_${histname}.dat";
+            my $png_name = "$st->{unique_name}_${histname}.png";
+
+            # Params for the gnuplot script
+            my $gp = '';
+            $gp .= sprintf("f_out     = \"%s\"\n", $png_name);
+            $gp .= sprintf("f_dat     = \"%s\"\n", $dat_name);
+            $gp .= sprintf("c_title   = \"$hdef->{title} $st->{unique_name} (%d/%.1f%% msgs, %d/%.1f%% bytes)\"\n",
+                $st->{n_msgs}, $st->{p_msgs}, $st->{n_bytes}, $st->{p_bytes});
+            $gp .= sprintf("c_xlabel  = \"%s\"\n", $hdef->{xlabel});
+            $gp .= sprintf("c_fmtx    = \"%s\"\n", $hdef->{fmtx});
+            $gp .= sprintf("c_fmtd    = \"%s\"\n", $hdef->{fmtd});
+            $gp .= sprintf("c_width   = %d\n", $hdef->{width});
+            $gp .= sprintf("c_height  = %d\n", $hdef->{height});
+            $gp .= sprintf("c_scale   = %g\n", $hdef->{scale});
+            $gp .= sprintf("s_n       = %d\n", $hi->{N});
+            $gp .= "s_mean    = " . (defined $hi->{mean} ? sprintf("%g", $hi->{mean}) : "NaN") . "\n";
+            $gp .= "s_std     = " . (defined $hi->{std}  ? sprintf("%g", $hi->{std})  : "NaN") . "\n";
+            $gp .= "s_min     = " . (defined $hi->{min}  ? sprintf("%g", $hi->{min})  : "NaN") . "\n";
+            $gp .= "s_p500    = " . (defined $hi->{p500} ? sprintf("%g", $hi->{p500}) : "NaN") . "\n";
+            $gp .= "s_p680    = " . (defined $hi->{p680} ? sprintf("%g", $hi->{p680}) : "NaN") . "\n";
+            $gp .= "s_p950    = " . (defined $hi->{p950} ? sprintf("%g", $hi->{p950}) : "NaN") . "\n";
+            $gp .= "s_p997    = " . (defined $hi->{p997} ? sprintf("%g", $hi->{p997}) : "NaN") . "\n";
+            $gp .= "s_max     = " . (defined $hi->{max}  ? sprintf("%g", $hi->{max})  : "NaN") . "\n";
+            $gp .= sprintf("h_size    = %d\n", $hi->{hist}->{size});
+            $gp .= sprintf("h_start   = %g\n", $hi->{hist}->{start});
+            $gp .= sprintf("h_stop    = %g\n", $hi->{hist}->{stop});
+            $gp .= sprintf("h_width   = %g\n", $hi->{hist}->{width});
+            $gp .= $DATA{hist_gp};
+
+            $gp .= sprintf("%g %g\n", $hi->{min}  * $hdef->{scale}, 0.0)   if (defined $hi->{min});
+            $gp .= sprintf("%g %g\n", $hi->{p500} * $hdef->{scale}, 0.5)   if (defined $hi->{p500});
+            $gp .= sprintf("%g %g\n", $hi->{p680} * $hdef->{scale}, 0.68)  if (defined $hi->{p680});
+            $gp .= sprintf("%g %g\n", $hi->{p950} * $hdef->{scale}, 0.95)  if (defined $hi->{p950});
+            $gp .= sprintf("%g %g\n", $hi->{p997} * $hdef->{scale}, 0.997) if (defined $hi->{p997});
+            $gp .= sprintf("%g %g\n", $hi->{max}  * $hdef->{scale}, 1.0)   if (defined $hi->{max});
+            $gp .= "e\n";
+
+            # Data for the gnuplot script
+            my $dat = '';
+            $dat .= sprintf("%10g %12g %12g\n", $_->{center} * $hdef->{scale}, $_->{prob}, $_->{cumul}) for (@{$hi->{hist}->{data}});
+
+            # Run gnuplot
+            DEBUG("$workdir/$gp_name");
+            path("$workdir/$gp_name")->spew($gp);
+            DEBUG("$workdir/$dat_name");
+            path("$workdir/$dat_name")->spew($dat);
+            DEBUG("$workdir/$png_name");
+            if (open(CMD, '-|', "cd $workdir && gnuplot $gp_name 2>&1")) {
+                my @out = map { chomp } <CMD>;
+                close(CMD);
+                my $ret = $? || 0;
+                $ret = $ret >> 8;
+                if ($ret) {
+                    WARNING("gnuplot $gp_name failed:\n@out");
+                } else {
+                    push(@plots, { name => $histname, png => $png_name, width => $hdef->{width}, height => $hdef->{height},
+                        gp => $gp_name, dat => $dat_name });
+                }
+            } else {
+                WARNING("gnuplot $gp_name failed: $!");
+            }
+        }
+
+        my $sec = { title => $st->{unique_name}, a => $st->{unique_name}, plots => \@plots };
+        $sec->{title} .= " &ndash; $st->{desc}" if ($st->{desc});
+        push(@{$report->{sections}}, $sec);
+    }
+
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+sub slurpToBase64
+{
+    my ($file) = @_;
+    my $data = MIME::Base64::encode_base64(path($file)->slurp());
+    $data =~ s{\n}{}g;
+    return $data;
+}
+
+sub makeHtml
+{
+    my ($report, $workdir) = @_;
+    INFO("Report");
+
+    my $sections = '';
+
+    my $meta = $report->{data}->{meta};
+    $sections .= "<div class=\"meta\">\n";
+    $sections .= "$meta->{stream} ($meta->{t_dur}, $meta->{t_start} &ndash; $meta->{t_stop}, \n";
+    my $bd = slurpToBase64("$report->{input}");
+    $sections .= "<a download=\"$report->{input_name}\" class=\"file\" href=\"data:text/plain;charset=utf-8;base64,$bd\">$report->{input_name}</a>)\n";
+    $sections .= "</div>\n";
+
+    foreach my $section (@{$report->{sections}}) {
+        my $h = "<div class=\"section\"><h2>$section->{title}</h2>\n";
+        if ($section->{a}) {
+            $h .= "<a name=\"$section->{a}\"/>";
+        }
+        if ($section->{html}) {
+            $h .= $section->{html};
+        }
+        elsif ($section->{plots}) {
+            $h .= "<div class=\"plots\">\n";
+            foreach my $plot (@{$section->{plots}}) {
+                $h .= "<div class=\"plot\">";
+
+                $bd = slurpToBase64("$workdir/$plot->{png}");
+                $h .= "<img classwidth=\"$plot->{width}\" height=\"$plot->{height}\" src=\"data:image/png;base64,$bd\"/>\n";
+
+                $bd = slurpToBase64("$workdir/$plot->{dat}");
+                $h .= "<div class=\"files\"><a download=\"$plot->{dat}\" class=\"file\" href=\"data:text/plain;charset=utf-8;base64,$bd\">.dat</a>\n";
+                $bd = slurpToBase64("$workdir/$plot->{gp}");
+                $h .= "<a download=\"$plot->{gp}\" class=\"file\" href=\"data:text/plain;charset=utf-8;base64,$bd\">.gp</a></div>\n";
+
+
+                $h .= "</div>\n";
+            }
+            $h .= "</div>\n";
+        }
+
+        $h .= "</div>\n";
+        $sections .= $h;
+    }
+
+    my $html = $DATA{report_html};
+    $html =~ s{%title%}{$report->{title}}g;
+    $html =~ s{%sections%}{$sections};
+    $html =~ s{%$_%}{$report->{data}->{meta}->{ffxx}->{$_}} for (qw{version copyright license});
+
+    DEBUG("$report->{html_name}");
+    path("$workdir/$report->{html_name}")->spew($html);
+
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+my $COLOURS =  -t STDERR ?
+    { W => "\e[1;33m", E => "\e[1;31m", I => "\e[m", D => "\e[0;36m",  c => "\e[35m", o => "\e[m", } :
+    { W => '', E => '', I => '', D => '', o => '' };
+
+# debug printing methods
+sub ERROR   { return $VERBOSITY >= -2 ? _PRINT('E', @_) : 1; }
+sub WARNING { return $VERBOSITY >= -1 ? _PRINT('W', @_) : 1; }
+sub INFO    { return $VERBOSITY >=  0 ? _PRINT('I', @_) : 1; }
+sub DEBUG   { return $VERBOSITY >=  1 ? _PRINT('D', @_) : 1; }
+
+sub _PRINT
+{
+    my ($type, @args) = @_;
+    @args = map
+    {
+        my $str = $_;
+        if (!defined $str) { $str = '<undef>'; }
+        elsif (ref($str))
+        {
+            local $Data::Dumper::Terse = 1;
+            local $Data::Dumper::Sortkeys = 1;
+            # local $Data::Dumper::Useqq = 1;
+            $str = Data::Dumper::Dumper($_);
+            $str =~ s{\r?\n$}{}s;
+        }
+        #$str =~ s/([^[:print:]\r\n])/"\\x" . sprintf('%02x', ord($1)) . "x"/ge;
+        $str
+    } @args;
+    my $fmt = shift(@args);
+    if ($#args > -1) {
+        printf(STDERR "$COLOURS->{$type}$fmt$COLOURS->{o}\n", @args);
+    } else {
+        print(STDERR "$COLOURS->{$type}$fmt$COLOURS->{o}\n");
+    }
+    return 1;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+sub jsonLoad
+{
+    my ($file) = @_;
+    if (-r $file) {
+        DEBUG("jsonLoad() '%s' (%.0fkb).", $file, (-s $file) / 1024);
+    }
+
+    my $json;
+    eval {
+        local $SIG{__DIE__} = 'IGNORE';
+        $json = path($file)->slurp_raw();
+    };
+    if ($@) {
+        WARNING("Warning: Could not load '$file': $!");
+        return undef;
+    }
+
+    my $obj;
+    eval {
+        local $SIG{__DIE__} = 'IGNORE';
+        $obj = JSON::XS->new()->utf8()->decode( $json );
+    };
+    my $err = "$@";
+
+    if ($err) {
+        WARNING("Warning: Could not parse JSON data: $err");
+        return undef;
+    }
+
+    return $obj;
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+exit(main(@ARGV) ? 0 : 1);
+
+########################################################################################################################
+
+__DATA__
+@@hist_gp@@
+# --------------------------------------------------------------------------------------------------
+set terminal png truecolor nocrop enhanced large size c_width,c_height
+#set terminal pngcairo color font "dejavu sans mono" size c_width,c_height
+set output f_out
+
+set title c_title font 'giant'
+set xlabel c_xlabel
+set ylabel "Density and probability"
+
+# Data is scaled
+start = h_start * c_scale
+stop = h_stop * c_scale
+w = h_width * c_scale
+w2 = w / 2.0
+mean = s_mean * c_scale
+std = s_std * c_scale
+min = s_min * c_scale
+p500 = s_p500 * c_scale
+p680 = s_p680 * c_scale
+p950 = s_p950 * c_scale
+p997 = s_p997 * c_scale
+max = s_max * c_scale
+
+# Set x range based so that all data fits
+x5 = (stop - start) / 5
+xb1 = start + x5
+xb2 = xb1 + x5
+xb3 = xb2 + x5
+xb4 = xb3 + x5
+
+# x0 = start
+# x1 = stop
+x0 = (min > xb3 ? xb3 : (min > xb2 ? xb2 : (min > xb1 ? xb1 : start)))
+x1 = (max > xb4 ? stop : (max > xb3 ? xb4 :( max > xb2 ? xb3 : xb2)))
+dx = ((x1 - x0) / w > 100 ? 2 * w : w)
+
+# Plot range
+y0 = 0.0
+y1 = 1.0
+px0 = x0 - dx
+px1 = x1 + dx
+py0 = y0 - 0.02
+py1 = y1 + 0.02
+set xrange [px0-w2:px1+w2]
+set yrange [py0:py1]
+
+# Style for grid
+set style line 11 linetype 0 linecolor rgbcolor "#aaaaaa" linewidth 1
+set style line 12 linetype 1 linecolor rgbcolor "#aaaaaa" linewidth 1
+
+# Grid
+set xtics w*10 scale 1
+set mxtics 10
+set ytics 0.1
+set style fill solid 1.0
+set format x c_fmtx
+set format y "%.1f"
+set grid xtics ytics front linestyle 11
+
+# Manually draw a box for the regular bins range
+set arrow 11 from first x0,py0 to first x0,py1 nohead back linestyle 12
+set arrow 12 from first x1,py0 to first x1,py1 nohead back linestyle 12
+
+# Statistics
+# - mean +- std
+set style line 21 linetype 1 linecolor rgbcolor "#0000ff" linewidth 2
+sstd = (std > 0 ? std : 0)
+set arrow 21 from first mean,py1 rto sstd,0    heads size character 1,90 linestyle 21 front
+set arrow 22 from first mean,py1 rto -sstd,0 heads size character 1,90 linestyle 21 front
+# set label 21 sprintf("mean " . c_fmtd . " std " . c_fmtd, mean, std) at first mean,0.3 center offset 0,-1 front
+# - percentiles
+set style line 31 linetype 0 linecolor rgbcolor "#0000ff" linewidth 1
+# set arrow 31 from first p500,0.50  to first px1,0.5   linestyle 31 nohead front
+# set arrow 32 from first p680,0.68  to first px1,0.68  linestyle 31 nohead front
+# set arrow 33 from first p950,0.95  to first px1,0.95  linestyle 31 nohead front
+# set arrow 34 from first p997,0.997 to first px1,0.997 linestyle 31 nohead front
+# set arrow 36 from first p500,0.5   to first p500,py0   linestyle 31 nohead front
+# set arrow 37 from first p680,0.68  to first p680,py0   linestyle 31 nohead front
+# set arrow 38 from first p950,0.95  to first p950,py0   linestyle 31 nohead front
+# set arrow 39 from first p997,0.997 to first p997,py0   linestyle 31 nohead front
+
+# set label 31 sprintf("50%% %.3f",   p500) at first p500,0.5   right offset 1.2,-0.2 rotate by 270 front
+# set label 32 sprintf("68%% %.3f",   p680) at first p680,0.68  right offset 1.2,-0.2 rotate by 270 front
+# set label 33 sprintf("95%% %.3f",   p950) at first p950,0.95  right offset 1.2,-0.2 rotate by 270 front
+# set label 34 sprintf("99.7%% %.3f", p997) at first p997,0.997 right offset 1.2,-0.2 rotate by 270 front
+
+# set object 31 circle center min,0.0    size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+# set object 32 circle center p500,0.5   size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+# set object 33 circle center p680,0.68  size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+# set object 34 circle center p950,0.95  size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+# set object 35 circle center p997,0.997 size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+# set object 36 circle center max,1.0    size 0.3 front noclip fillcolor rgbcolor "#ff0000"
+
+# Values
+# set label 21 sprintf("N    %d",          s_n)  at first x0,y1 left offset 1,-0.5 front
+# set label 22 sprintf("mean   " . c_fmtd, mean) at first x0,y1 left offset 1,-2.0 front
+# set label 23 sprintf("std    " . c_fmtd, std)  at first x0,y1 left offset 1,-3.0 front
+# set label 24 sprintf("min    " . c_fmtd, min)  at first x0,y1 left offset 1,-4.5 front
+# set label 25 sprintf("50%%    " . c_fmtd, p500) at first x0,y1 left offset 1,-5.5 front
+# set label 26 sprintf("68%%    " . c_fmtd, p680) at first x0,y1 left offset 1,-6.5 front
+# set label 27 sprintf("95%%    " . c_fmtd, p950) at first x0,y1 left offset 1,-7.5 front
+# set label 28 sprintf("99.7%%  " . c_fmtd, p997) at first x0,y1 left offset 1,-8.5 front
+# set label 29 sprintf("max    " . c_fmtd, max)  at first x0,y1 left offset 1,-9.5 front
+
+set label 21 sprintf("N = %d",  s_n)  at first x1,y1 right offset -2,-1.5 front
+set label 22 sprintf("mean   "  . c_fmtd, mean) at first x1,y1 right offset -2,-3.0 front
+set label 23 sprintf("std    "  . c_fmtd, std)  at first x1,y1 right offset -2,-4.0 front
+set label 24 sprintf("min    "  . c_fmtd, min)  at first x1,y1 right offset -2,-5.5 front
+set label 25 sprintf("50%%    " . c_fmtd, p500) at first x1,y1 right offset -2,-6.5 front
+set label 26 sprintf("68%%    " . c_fmtd, p680) at first x1,y1 right offset -2,-7.5 front
+set label 27 sprintf("95%%    " . c_fmtd, p950) at first x1,y1 right offset -2,-8.5 front
+set label 28 sprintf("99.7%%  " . c_fmtd, p997) at first x1,y1 right offset -2,-9.5 front
+set label 29 sprintf("max    "  . c_fmtd, max)  at first x1,y1 right offset -2,-10.5 front
+
+# Bars (density)
+set style line 101 fillcolor rgbcolor "#aa0099" linewidth 0  # fill underflow/overflow
+set style line 102 fillcolor rgbcolor "#33aa00" linewidth 0  # fill regular bins
+set boxwidth 1.0 relative
+set style fill solid 0.5
+set style line 103 linecolor rgbcolor "#205500" linewidth 1  # outline regular bins
+
+# Cumulative
+set style line 111 linecolor rgbcolor "#ff0000" linewidth 2
+set style line 112 linecolor rgbcolor "#ff0000" linewidth 1 pointtype 7
+
+# Exaggerate very small values. True 0 are 0. very small numbers are made a bit bigger so that the very small bars are visible
+vv(v) = (v == 0 ? v : (v < 0.005 ? 0.005 : v))
+
+# Filter for values only in regular bins
+vi(x, y) = (x < x0 || x > x1 ? 1/0 : vv(y))
+# For values only in underflow/overflow bins we plot all (and plot over it with the above), but we only exaggerate the underflow/overflow bins
+vo(x, y) = (x < x0 || x > x1 ? vv(y) : y)
+
+plot f_dat using ($1):(vo($1,$2))    with boxes  linestyle 101 notitle, \
+     f_dat using ($1):(vi($1,$2))    with boxes  linestyle 102 notitle, \
+     f_dat using ($1-w2):(vi($1,$2)) with steps  linestyle 103 notitle, \
+     f_dat using ($1):($3)           with lines  linestyle 111 notitle, \
+     "-"   using ($1):($2) with points linestyle 112 notitle
+
+@@report_html@@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>%title%</title>
+            <style>
+                html { box-sizing: border-box; font-size: 1rem; font-family: sans-serif; }
+                *, *:before, *:after { box-sizing: inherit; }
+                body, h1, h2, h3, h4, h5, h6, p, ol, ul { margin: 0; padding: 0; font-weight: normal; }
+                ol, ul { list-style: none; }
+                img { max-width: 100%; height: auto; }
+                h2 { margin-top: 1rem; }
+                img { cursor: crosshair; }
+                body { padding: 0.5rem 1rem; }
+                .plots { display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: center; align-items: flex-start; }
+                .plot { position: relative; border: 0.1rem solid #fff; } .plot:hover { border: 0.1rem solid #aaa; }
+                .files { font-size: 75%; position: absolute; left: 1rem; bottom: 0.25rem; }
+                .file { font-family: monospace; color: #44a; text-decoration: none; } .file:hover { color: #f33; }
+                a { color: #44a; text-decoration: none; } a:hover { color: #f33; }
+                table { border-collapse: collapse; border: 0.1rem solid #000; }
+                th, td { border: 0.1rem solid #000; padding: 0.1rem 0.25rem; }
+                thead { background-color: #eee; }
+                .num { text-align: right; }
+                .stat { text-align: center; width: 4rem; }
+                .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                tbody tr:hover { background-color: #efe; }
+                .footer { margin: 1rem 0 0 0; border-top: 0.1rem solid black; }
+                .footer p { text-align: center; color: #999; font-size: 90%; }
+                .footer svg { display: block; width: 15rem; margin: 0 auto; }
+            </style>
+    </head>
+    <body>
+        <h1>%title%</h1>
+        %sections%
+        <div class="footer">
+            <p>flipflip's c++ apps %version% &mdash; %copyright% &mdash; %license%</p>
+        </div>
+    </body>
+    <script>
+        document.querySelectorAll('img').forEach((el) => {
+            el.onclick = (event) => { window.location.href = event.target.src; };
+        });
+    </script>
+</html>
